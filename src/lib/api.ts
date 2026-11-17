@@ -89,4 +89,28 @@ export const api = {
     }
     return res.json();
   },
+
+  async acknowledgeAlert(alertId: string): Promise<{ success: boolean; alertId: string; acknowledged: boolean }> {
+    const res = await fetch("/api/caregiver", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ alertId, acknowledged: true }),
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to acknowledge alert: ${res.statusText}`);
+    }
+    return res.json();
+  },
+
+  async recordWellness(status: "good" | "normal" | "unwell", notes: string = ""): Promise<{ success: boolean; wellness: any }> {
+    const res = await fetch("/api/caregiver", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, notes }),
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to record wellness check-in: ${res.statusText}`);
+    }
+    return res.json();
+  },
 };

@@ -37,10 +37,19 @@ export interface AdherenceSummary {
 export interface CaregiverAlert {
   id: string;
   patientName: string;
-  type: "missed_dose" | "late_take" | "reminder";
+  type: "missed_dose" | "late_take" | "reminder" | "wellness_checkin";
   message: string;
   time: string;
   severity: "info" | "warning" | "urgent";
+  acknowledged?: boolean;
+}
+
+export type WellnessStatus = "good" | "normal" | "unwell";
+
+export interface PatientWellness {
+  status: WellnessStatus;
+  notes?: string;
+  recordedAt: string;
 }
 
 export interface PatientProfile {
@@ -50,4 +59,5 @@ export interface PatientProfile {
   phone: string;
   emergencyContact: string;
   caregiverName: string;
+  todayWellness?: PatientWellness | null;
 }

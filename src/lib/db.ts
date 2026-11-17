@@ -62,9 +62,26 @@ export function getDatabase(): DatabaseSync {
       severity TEXT NOT NULL,
       time TEXT NOT NULL,
       created_at TEXT NOT NULL,
+      acknowledged INTEGER DEFAULT 0,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS patient_wellness (
+      id TEXT PRIMARY KEY,
+      patient_id TEXT NOT NULL,
+      date_key TEXT NOT NULL,
+      status TEXT NOT NULL,
+      notes TEXT,
+      created_at TEXT NOT NULL,
       FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
     );
   `);
+
+  try {
+    db.exec("ALTER TABLE caregiver_alerts ADD COLUMN acknowledged INTEGER DEFAULT 0;");
+  } catch {
+    // Column already exists
+  }
 
   // Seed synthetic initial data if empty
   const patientCount = db.prepare("SELECT count(*) as count FROM patients").get() as { count: number };

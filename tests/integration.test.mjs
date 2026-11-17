@@ -5,7 +5,6 @@ import { DatabaseSync } from "node:sqlite";
 describe("SaharaCare End-to-End Integration & Business Flow", () => {
   let db;
 
-  // Kathmandu Timezone Key Helper
   function getKathmanduDateKey() {
     return new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Kathmandu",
@@ -59,6 +58,17 @@ describe("SaharaCare End-to-End Integration & Business Flow", () => {
         message TEXT NOT NULL,
         severity TEXT NOT NULL,
         time TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        acknowledged INTEGER DEFAULT 0,
+        FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE patient_wellness (
+        id TEXT PRIMARY KEY,
+        patient_id TEXT NOT NULL,
+        date_key TEXT NOT NULL,
+        status TEXT NOT NULL,
+        notes TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
       );
@@ -118,16 +128,14 @@ describe("SaharaCare End-to-End Integration & Business Flow", () => {
 
     // Dispatch caregiver alert
     db.prepare(`
-      INSERT INTO caregiver_alerts (id, patient_id, type, message, severity, time, created_at)
-      VALUES ('alert-take-1', 'patient-ram-01', 'reminder', 'Metformin 500mg marked as taken at 08:35 AM.', 'info', 'Just now', datetime('now'))
+      INSERT INTO caregiver_alerts (id, patient_id, type, message, severity, time, created_at, acknowledged)
+      VALUES ('alert-take-1', 'patient-ram-01', 'reminder', 'Metformin 500mg marked as taken at 08:35 AM.', 'info', 'Just now', datetime('now'), 0)
     `).run();
 
-    // Verify updated state
     const dose = db.prepare("SELECT * FROM dose_records WHERE id = 'dose-1'").get();
     assert.equal(dose.status, "taken");
     assert.equal(dose.taken_at, "08:35 AM");
 
-    // Verify adherence computation
     const allDoses = db.prepare("SELECT * FROM dose_records WHERE date_key = ?").all(todayKey);
     const taken = allDoses.filter(d => d.status === "taken").length;
     const total = allDoses.length;
@@ -136,15 +144,35 @@ describe("SaharaCare End-to-End Integration & Business Flow", () => {
     assert.equal(total, 3);
     assert.equal(taken, 1);
     assert.equal(adherence, 33);
-
-    // Verify caregiver alert exists
-    const alerts = db.prepare("SELECT * FROM caregiver_alerts WHERE patient_id = 'patient-ram-01'").all();
-    assert.equal(alerts.length, 1);
-    assert.equal(alerts[0].type, "reminder");
   });
 
-  test("4. Add Medication Pipeline with Input Validation Safeguards", () => {
-    // Valid input creates medication
+  test("4. Caregiver Alert Acknowledgment Workflow", () => {
+    const alertBefore = db.prepare("SELECT * FROM caregiver_alerts WHERE id = 'alert-take-1'").get();
+    assert.equal(alertBefore.acknowledged, 0);
+
+    // Caregiver acknowledges alert
+    db.prepare("UPDATE caregiver_alerts SET acknowledged = 1 WHERE id = 'alert-take-1'").run();
+
+    const alertAfter = db.prepare("SELECT * FROM caregiver_alerts WHERE id = 'alert-take-1'").get();
+    assert.equal(alertAfter.acknowledged, 1);
+  });
+
+  test("5. Daily Wellness Check-In Recording and Alert Propagation", () => {
+    const todayKey = getKathmanduDateKey();
+    const wellnessId = "wellness-test-1";
+
+    db.prepare(`
+      INSERT INTO patient_wellness (id, patient_id, date_key, status, notes, created_at)
+      VALUES (?, 'patient-ram-01', ?, 'good', 'Slept well, no joint pain', datetime('now'))
+    `).run(wellnessId, todayKey);
+
+    const saved = db.prepare("SELECT * FROM patient_wellness WHERE id = ?").get(wellnessId);
+    assert.ok(saved);
+    assert.equal(saved.status, "good");
+    assert.equal(saved.notes, "Slept well, no joint pain");
+  });
+
+  test("6. Add Medication Pipeline with Input Validation Safeguards", () => {
     const medId = "med-new-4";
     const todayKey = getKathmanduDateKey();
 
@@ -153,7 +181,6 @@ describe("SaharaCare End-to-End Integration & Business Flow", () => {
       VALUES (?, 'patient-ram-01', ?, ?, ?, ?, 1, datetime('now'))
     `).run(medId, "Losartan 50mg", "1 tablet", "Take in evening", "evening");
 
-    // Automatically generate today's dose
     db.prepare(`
       INSERT INTO dose_records (id, medication_id, date_key, scheduled_time, status, taken_at)
       VALUES (?, ?, ?, '06:00 PM', 'scheduled', NULL)
@@ -162,7 +189,6 @@ describe("SaharaCare End-to-End Integration & Business Flow", () => {
     const dosesAfterAdd = db.prepare("SELECT * FROM dose_records WHERE date_key = ?").all(todayKey);
     assert.equal(dosesAfterAdd.length, 4);
 
-    // Empty name or dosage constraint validation
     assert.throws(() => {
       db.prepare(`
         INSERT INTO medications (id, patient_id, name, dosage, instructions, time_of_day, active, created_at)

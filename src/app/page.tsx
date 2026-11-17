@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { UserRole, Language, TodayDose, Medication, TimeOfDay, AdherenceSummary, CaregiverAlert, PatientProfile } from "@/types";
+import { UserRole, Language, TodayDose, Medication, TimeOfDay, AdherenceSummary, CaregiverAlert, PatientProfile, WellnessStatus } from "@/types";
 import { en } from "@/lib/i18n/en";
 import { ne } from "@/lib/i18n/ne";
 import { api } from "@/lib/api";
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { PatientHeaderCard } from "@/components/patient/PatientHeaderCard";
+import { PatientWellnessCard } from "@/components/patient/PatientWellnessCard";
 import { AudioAssistantCard } from "@/components/audio/AudioAssistantCard";
 import { TodayDoseTimeline } from "@/components/patient/TodayDoseTimeline";
 import { MedicationList } from "@/components/patient/MedicationList";
@@ -25,6 +26,7 @@ const defaultPatient: PatientProfile = {
   phone: "+977-9841234567",
   emergencyContact: "+977-9812345678",
   caregiverName: "Pooja Shrestha (Daughter)",
+  todayWellness: null,
 };
 
 const defaultAdherence: AdherenceSummary = {
@@ -42,6 +44,7 @@ export default function SaharaCareApp() {
   const [isEmergencyOpen, setIsEmergencyOpen] = useState(false);
   const [isAddMedOpen, setIsAddMedOpen] = useState(false);
   const [fontSize, setFontSize] = useState<FontSize>("normal");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Live Backend State
   const [patient, setPatient] = useState<PatientProfile>(defaultPatient);
@@ -54,7 +57,6 @@ export default function SaharaCareApp() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
-  const [actionInProgress, setActionInProgress] = useState(false);
 
   const t = lang === "ne" ? ne : en;
 
@@ -93,7 +95,6 @@ export default function SaharaCareApp() {
 
   // Mark Dose Taken via Real API
   const handleMarkTaken = async (doseId: string) => {
-    setActionInProgress(true);
     try {
       const res = await api.markDoseTaken(doseId);
       if (res.success) {
@@ -113,8 +114,6 @@ export default function SaharaCareApp() {
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to record dose.");
       setTimeout(() => setErrorMessage(null), 4000);
-    } finally {
-      setActionInProgress(false);
     }
   };
 
@@ -125,7 +124,6 @@ export default function SaharaCareApp() {
     instructions: string;
     timeOfDay: TimeOfDay;
   }) => {
-    setActionInProgress(true);
     try {
       const res = await api.createMedication(newMedData);
       if (res.success) {
@@ -143,8 +141,42 @@ export default function SaharaCareApp() {
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to create medication.");
       setTimeout(() => setErrorMessage(null), 4000);
-    } finally {
-      setActionInProgress(false);
+    }
+  };
+
+  // Daily Wellness Check-In Action
+  const handleRecordWellness = async (status: WellnessStatus) => {
+    try {
+      const res = await api.recordWellness(status);
+      if (res.success) {
+        setPatient((prev) => ({
+          ...prev,
+          todayWellness: res.wellness,
+        }));
+        setFeedbackMessage("Thank you! Your wellness status was shared with your caregiver.");
+        setTimeout(() => setFeedbackMessage(null), 3500);
+
+        const caregiverRes = await api.getCaregiverOverview();
+        if (caregiverRes.success) {
+          setAlerts(caregiverRes.alerts);
+        }
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to record wellness.");
+    }
+  };
+
+  // Acknowledge Caregiver Alert Action
+  const handleAcknowledgeAlert = async (alertId: string) => {
+    try {
+      const res = await api.acknowledgeAlert(alertId);
+      if (res.success) {
+        setAlerts((prev) =>
+          prev.map((a) => (a.id === alertId ? { ...a, acknowledged: true } : a))
+        );
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to acknowledge alert.");
     }
   };
 
@@ -214,13 +246,21 @@ export default function SaharaCareApp() {
                 {/* Patient Header Progress Card */}
                 <PatientHeaderCard adherence={adherence} lang={lang} />
 
+                {/* Daily Wellness Check-In Card */}
+                <PatientWellnessCard
+                  currentWellness={patient.todayWellness}
+                  onRecordWellness={handleRecordWellness}
+                  lang={lang}
+                />
+
                 {/* Audio-Assisted Accessibility Subsystem */}
                 <AudioAssistantCard
                   doses={doses}
                   adherence={adherence}
                   lang={lang}
                   onVoiceSearch={(query) => {
-                    setFeedbackMessage(`Voice note detected: "${query}"`);
+                    setSearchQuery(query);
+                    setFeedbackMessage(`Voice search applied: "${query}"`);
                     setTimeout(() => setFeedbackMessage(null), 3500);
                   }}
                 />
@@ -272,6 +312,8 @@ export default function SaharaCareApp() {
                     doses={doses}
                     onMarkTaken={handleMarkTaken}
                     lang={lang}
+                    searchFilter={searchQuery}
+                    onClearSearch={() => setSearchQuery("")}
                   />
                 ) : (
                   <MedicationList
@@ -290,6 +332,7 @@ export default function SaharaCareApp() {
                 adherence={adherence}
                 alerts={alerts}
                 lang={lang}
+                onAcknowledgeAlert={handleAcknowledgeAlert}
               />
             )}
           </>

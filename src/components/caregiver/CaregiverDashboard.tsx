@@ -3,13 +3,14 @@ import { AdherenceSummary, CaregiverAlert, PatientProfile, Language } from "@/ty
 import { en } from "@/lib/i18n/en";
 import { ne } from "@/lib/i18n/ne";
 import { Card } from "@/components/ui/Card";
-import { User, Bell, CheckCircle2, Clock, AlertTriangle, ShieldCheck } from "lucide-react";
+import { User, Bell, CheckCircle2, Clock, AlertTriangle, ShieldCheck, Smile, Meh, Frown, Check } from "lucide-react";
 
 interface CaregiverDashboardProps {
   patient: PatientProfile;
   adherence: AdherenceSummary;
   alerts: CaregiverAlert[];
   lang: Language;
+  onAcknowledgeAlert?: (alertId: string) => void;
 }
 
 export const CaregiverDashboard: React.FC<CaregiverDashboardProps> = ({
@@ -17,13 +18,34 @@ export const CaregiverDashboard: React.FC<CaregiverDashboardProps> = ({
   adherence,
   alerts,
   lang,
+  onAcknowledgeAlert,
 }) => {
   const t = lang === "ne" ? ne : en;
+
+  const wellnessConfig = {
+    good: {
+      label: "Feeling Good / Energetic",
+      icon: <Smile className="w-4 h-4 text-emerald-500" />,
+      color: "text-emerald-400",
+    },
+    normal: {
+      label: "Normal / Stable",
+      icon: <Meh className="w-4 h-4 text-sky-400" />,
+      color: "text-sky-300",
+    },
+    unwell: {
+      label: "Unwell / Needs Attention",
+      icon: <Frown className="w-4 h-4 text-amber-400" />,
+      color: "text-amber-300",
+    },
+  };
+
+  const unacknowledgedCount = alerts.filter((a) => !a.acknowledged).length;
 
   return (
     <div className="space-y-6">
       {/* Patient Profile Header Card */}
-      <Card className="bg-gradient-to-r from-forest-900 to-forest-800 text-white border-forest-700">
+      <Card className="bg-gradient-to-r from-forest-900 to-forest-800 text-white border-forest-700 shadow-md">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-3.5">
             <div className="w-12 h-12 rounded-2xl bg-forest-700 border border-mint-400 flex items-center justify-center text-mint-200">
@@ -39,9 +61,21 @@ export const CaregiverDashboard: React.FC<CaregiverDashboardProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-2 bg-forest-950/60 px-3 py-1.5 rounded-xl border border-forest-700/60 text-xs">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span className="text-mint-100 font-medium">{patient.caregiverName}</span>
+          <div className="flex flex-col sm:items-end space-y-1.5">
+            <div className="flex items-center space-x-2 bg-forest-950/60 px-3 py-1.5 rounded-xl border border-forest-700/60 text-xs">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span className="text-mint-100 font-medium">{patient.caregiverName}</span>
+            </div>
+
+            {/* Daily Wellness Pill */}
+            {patient.todayWellness && (
+              <div className="flex items-center space-x-1.5 text-xs bg-forest-950/80 px-2.5 py-1 rounded-lg border border-forest-600/50">
+                {wellnessConfig[patient.todayWellness.status]?.icon}
+                <span className={`font-semibold ${wellnessConfig[patient.todayWellness.status]?.color}`}>
+                  Check-in: {wellnessConfig[patient.todayWellness.status]?.label}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </Card>
@@ -116,41 +150,71 @@ export const CaregiverDashboard: React.FC<CaregiverDashboardProps> = ({
 
       {/* Alerts Feed */}
       <div className="space-y-3">
-        <div className="flex items-center space-x-2">
-          <Bell className="w-4 h-4 text-forest-700" />
-          <h3 className="text-base font-bold text-forest-900">{t.recentAlerts}</h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Bell className="w-4 h-4 text-forest-700" />
+            <h3 className="text-base font-bold text-forest-900">{t.recentAlerts}</h3>
+          </div>
+          {unacknowledgedCount > 0 && (
+            <span className="text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200 px-2.5 py-0.5 rounded-full">
+              {unacknowledgedCount} unacknowledged
+            </span>
+          )}
         </div>
 
         <div className="space-y-2.5">
           {alerts.map((alert) => (
             <Card
               key={alert.id}
-              className={`p-4 border ${
-                alert.severity === "warning"
+              className={`p-4 border transition-all ${
+                alert.acknowledged
+                  ? "bg-gray-50/70 border-gray-200 opacity-80"
+                  : alert.severity === "warning"
                   ? "bg-amber-50/40 border-amber-200"
-                  : "bg-mint-50/30 border-mint-200"
+                  : "bg-mint-50/40 border-mint-200"
               }`}
             >
-              <div className="flex items-start space-x-3">
-                <div
-                  className={`p-2 rounded-xl mt-0.5 ${
-                    alert.severity === "warning"
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-forest-100 text-forest-800"
-                  }`}
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-forest-900">
-                      {alert.patientName}
-                    </h4>
-                    <span className="text-[11px] text-forest-500">{alert.time}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start space-x-3 flex-1">
+                  <div
+                    className={`p-2 rounded-xl mt-0.5 ${
+                      alert.acknowledged
+                        ? "bg-gray-200 text-gray-700"
+                        : alert.severity === "warning"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-forest-100 text-forest-800"
+                    }`}
+                  >
+                    <AlertTriangle className="w-4 h-4" />
                   </div>
-                  <p className="text-xs text-forest-700 mt-1 leading-relaxed">
-                    {alert.message}
-                  </p>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h4 className="text-sm font-bold text-forest-900">
+                        {alert.patientName}
+                      </h4>
+                      <span className="text-[11px] text-forest-500">{alert.time}</span>
+                    </div>
+                    <p className="text-xs text-forest-700 mt-0.5 leading-relaxed">
+                      {alert.message}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Acknowledge Button */}
+                <div>
+                  {alert.acknowledged ? (
+                    <span className="inline-flex items-center space-x-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Acknowledged</span>
+                    </span>
+                  ) : onAcknowledgeAlert ? (
+                    <button
+                      onClick={() => onAcknowledgeAlert(alert.id)}
+                      className="px-3 py-1.5 bg-forest-900 text-white hover:bg-forest-800 rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-95"
+                    >
+                      Acknowledge
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </Card>
