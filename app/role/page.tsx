@@ -1,0 +1,92 @@
+"use client";
+
+import Link from "next/link";
+import { ArrowLeft, HeartPulse, Stethoscope, UserRound, UsersRound } from "lucide-react";
+import { motion } from "framer-motion";
+import { LanguageToggle } from "@/components/ui/LanguageToggle";
+import { useApp } from "@/components/providers/AppProvider";
+
+const choices = [
+  {
+    href: "/signup?role=patient",
+    key: "patientRole" as const,
+    detail: "patientRoleDetail" as const,
+    Icon: UserRound,
+    color: "bg-blue-50 text-primary dark:bg-blue-950/40",
+  },
+  {
+    href: "/signup?role=caregiver",
+    key: "caregiverRole" as const,
+    detail: "caregiverRoleDetail" as const,
+    Icon: UsersRound,
+    color: "bg-green-50 text-green-700 dark:bg-green-950/40",
+  },
+  {
+    href: "/signup?role=doctor",
+    key: "doctorRole" as const,
+    detail: "doctorRoleDetail" as const,
+    Icon: Stethoscope,
+    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-100",
+  },
+];
+
+export default function RolePage() {
+  const { t } = useApp();
+
+  return (
+    <main className="min-h-screen overflow-x-hidden bg-background px-4 py-6 sm:px-5">
+      <div className="mx-auto max-w-5xl">
+        <div className="grid grid-cols-[48px_1fr] items-center gap-3 sm:grid-cols-[48px_1fr_auto]">
+          <Link href="/" className="grid h-12 w-12 place-items-center rounded-2xl border bg-card" aria-label={t("back")}>
+            <ArrowLeft />
+          </Link>
+          <div className="flex items-center justify-self-center gap-2 font-extrabold">
+            <HeartPulse className="text-primary" />
+            SaharaCare
+          </div>
+          <div className="col-span-2 justify-self-center sm:col-span-1 sm:justify-self-end">
+            <LanguageToggle />
+          </div>
+        </div>
+
+        <div className="mx-auto mt-14 max-w-2xl text-center">
+          <p className="eyebrow">{t("oneSimpleChoice")}</p>
+          <h1 className="mt-3 text-4xl font-extrabold tracking-tight md:text-5xl">{t("chooseRole")}</h1>
+          <p className="mt-4 text-lg text-muted">{t("chooseRoleHelp")}</p>
+        </div>
+
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {choices.map(({ href, key, detail, Icon, color }, index) => (
+            <motion.div
+              key={href}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.08 }}
+              whileHover={{ y: -4 }}
+              className="h-full"
+            >
+              <Link
+                href={href}
+                className="surface grid min-h-[20rem] w-full grid-rows-[80px_minmax(64px,auto)_1fr_auto] items-center justify-items-center p-6 text-center transition-shadow hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 lg:p-8"
+              >
+                <span className={`grid h-20 w-20 place-items-center rounded-3xl ${color}`}>
+                  <Icon className="h-11 w-11" />
+                </span>
+                <h2 className="mt-5 self-start text-2xl font-extrabold lg:text-3xl">{t(key)}</h2>
+                <p className="mt-3 max-w-sm self-start text-base leading-relaxed text-muted lg:text-lg">{t(detail)}</p>
+                <span className="mt-6 font-bold text-primary">{t("continue")} →</span>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+
+        <p className="mt-8 text-center font-semibold text-muted">
+          {t("alreadyHaveAccount")}{" "}
+          <Link href="/login" className="font-extrabold text-primary hover:underline">
+            {t("signIn")}
+          </Link>
+        </p>
+      </div>
+    </main>
+  );
+}
