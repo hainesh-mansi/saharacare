@@ -1,0 +1,82 @@
+import { Clock3, ShieldCheck } from "lucide-react";
+import { PatientCard } from "@/components/caregiver/PatientCard";
+import { CaregiverConnectCard } from "@/components/linking/CaregiverConnectCard";
+import { CaregiverDoseRealtime } from "@/components/realtime/CaregiverDoseRealtime";
+import { Card } from "@/components/ui/Card";
+import { DataErrorState } from "@/components/ui/DataState";
+import { TranslatedText } from "@/components/ui/TranslatedText";
+import { requireRole } from "@/lib/auth";
+import { getCaregiverPatients } from "@/lib/data/phase4";
+
+export default async function CaregiverPage() {
+  const [profile, result] = await Promise.all([
+    requireRole("caregiver"),
+    getCaregiverPatients(),
+  ]);
+
+  if (result.error) {
+    return <DataErrorState messageKey="linkedPatientsError" />;
+  }
+
+  const acceptedPatients = result.data.filter((patient) => patient.status === "accepted");
+  const pendingCount = result.data.filter((patient) => patient.status === "pending").length;
+  const realtimePatients = acceptedPatients.flatMap((patient) => (
+    patient.patient_id && patient.full_name
+      ? [{
+          patientId: patient.patient_id,
+          fullName: patient.full_name,
+          doses: patient.today_doses.map((dose) => ({
+            id: dose.id,
+            medicationName: dose.medication.name,
+          })),
+        }]
+      : []
+  ));
+
+  return (
+    <div className="space-y-6 md:space-y-8">
+      <CaregiverDoseRealtime patients={realtimePatients} />
+      <Card className="relative overflow-hidden bg-gradient-to-br from-white via-white to-blue-50 p-5 md:p-8 dark:from-card dark:via-card dark:to-blue-950/40">
+        <span className="absolute -end-10 -top-10 h-32 w-32 rounded-full bg-blue-100/60" aria-hidden="true" />
+        <header className="relative flex items-start gap-4">
+          <span className="icon-tile hidden sm:grid"><ShieldCheck aria-hidden="true" /></span>
+          <div><p className="eyebrow"><TranslatedText translationKey="caregiverOverview" /></p>
+          <h1 className="patient-heading mt-2"><TranslatedText translationKey="greetingName" values={{ name: profile.full_name }} /></h1>
+          <p className="page-intro mt-2"><TranslatedText translationKey="caregiverDashboardIntro" /></p></div>
+        </header>
+      </Card>
+
+      <CaregiverConnectCard links={result.data} />
+
+      <section>
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="eyebrow"><TranslatedText translationKey="peopleYouCareFor" /></p>
+            <h2 className="section-title mt-1"><TranslatedText translationKey="linkedPatients" /></h2>
+          </div>
+          {pendingCount > 0 ? (
+            <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 font-bold text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+              <Clock3 /><TranslatedText translationKey="pendingCount" values={{ count: pendingCount }} />
+            </span>
+          ) : null}
+        </div>
+
+        {acceptedPatients.length === 0 ? (
+          <Card className="border-dashed p-8 text-center">
+            <ShieldCheck className="mx-auto h-14 w-14 text-primary" />
+            <h3 className="mt-4 text-2xl font-extrabold"><TranslatedText translationKey="noApprovedPatients" /></h3>
+            <p className="mx-auto mt-2 max-w-xl leading-relaxed text-muted">
+              <TranslatedText translationKey="noApprovedPatientsHelp" />
+            </p>
+          </Card>
+        ) : (
+          <div className="grid gap-5 2xl:grid-cols-2">
+            {acceptedPatients.map((patient) => (
+              <PatientCard key={patient.link_id} patient={patient} />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
