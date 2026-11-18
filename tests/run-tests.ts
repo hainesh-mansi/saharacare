@@ -18,3 +18,4 @@ import "./push-notifications.test";
 import "./ui-localization.test";
 import "./security-hardening.test";
 import "./database-security.test";
+import "./saharacare2-ecosystem.test";

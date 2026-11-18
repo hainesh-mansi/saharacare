@@ -6,6 +6,7 @@ import { AdherenceSummaryCard } from "@/components/analytics/AdherenceSummaryCar
 import { TodayDoseTimeline } from "@/components/doses/TodayDoseTimeline";
 import { MedicationHistory } from "@/components/history/MedicationHistory";
 import { CaregiverStatusCard, QuickActionsCard, TodayProgressCard, UpcomingRemindersCard } from "@/components/patient/PatientDashboardSections";
+import { EcosystemHubCard } from "@/components/patient/EcosystemHubCard";
 import { PatientCareDirectory } from "@/components/patient/PatientCareDirectory";
 import { PatientNextCareCard } from "@/components/patient/PatientNextCareCard";
 import { useApp } from "@/components/providers/AppProvider";
@@ -64,6 +65,8 @@ export function PatientDashboard({
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-card text-primary shadow-sm"><HeartPulse className="h-8 w-8" strokeWidth={1.6} aria-hidden="true" /></span>
           <div className="min-w-0 flex-1"><h2 className="text-lg font-extrabold leading-snug sm:text-xl">{t("careForToday")}</h2><p className="mt-1 text-sm leading-relaxed text-muted">{t("careForTodayDetail")}</p></div>
         </div>
+
+        <EcosystemHubCard />
 
         <PatientCareDirectory doctors={doctors} appointments={appointments} doctorsUnavailable={doctorsUnavailable} appointmentsUnavailable={appointmentsUnavailable} />
 

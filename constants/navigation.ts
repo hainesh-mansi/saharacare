@@ -1,4 +1,4 @@
-import { Bell, Bot, CalendarClock, CalendarDays, FileHeart, HeartPulse, Home, LayoutDashboard, Pill, Settings, UserRound } from "lucide-react";
+import { Activity, Bell, Bot, CalendarClock, CalendarDays, FileHeart, HeartPulse, Home, LayoutDashboard, Pill, Settings, ShieldCheck, Sparkles, Store, UserRound } from "lucide-react";
 
 export const patientNavigation = [
   { href: "/patient", label: "dashboard" as const, icon: Home },
@@ -9,9 +9,17 @@ export const patientNavigation = [
   { href: "/patient/profile", label: "profile" as const, icon: UserRound },
 ];
 
+export const ecosystemNavigation = [
+  { href: "/patient/vitals", label: "vitals" as const, icon: Activity },
+  { href: "/patient/insurance", label: "insurance" as const, icon: ShieldCheck },
+  { href: "/patient/pharmacies", label: "pharmacies" as const, icon: Store },
+  { href: "/patient/innovations", label: "innovations" as const, icon: Sparkles },
+];
+
 export const patientNavigationSections = [
   { label: "dailyCare" as const, items: patientNavigation.slice(0, 3) },
   { label: "healthAndSupport" as const, items: patientNavigation.slice(3) },
+  { label: "ecosystemServices" as const, items: ecosystemNavigation },
 ];
 
 export const caregiverNavigation = [
